@@ -6,8 +6,11 @@
 
 double math_function(double x);
 double derivative_1_math_funct(double x);
+double derivative_2_math_funct(double x);
+int check_root_uniqueness(double a, double b);
 void research_function(void);
 void bisection_method(void);
+void chord_method(void);
 
 // Головна функція забезпечує вибір методу розв'язання рівняння.
 int main()
@@ -18,7 +21,8 @@ int main()
     {
         // Виведення головного меню програми.
         printf("\n1 - Bisection method");
-        printf("\n2 - Function research and tables");
+        printf("\n2 - Chord method");
+        printf("\n3 - Function research and tables");
         printf("\n0 - Exit");
         printf("\nChoose option: ");
 
@@ -33,8 +37,13 @@ int main()
                 bisection_method();
                 break;
 
-            // Дослідження функції та пошук проміжків ізоляції.
+            // Пошук кореня методом хорд.
             case 2:
+                chord_method();
+                break;
+
+            // Дослідження функції та пошук проміжків ізоляції.
+            case 3:
                 research_function();
                 break;
 
@@ -63,6 +72,38 @@ double derivative_1_math_funct(double x)
 {
     // Диференціюємо квадратний і кубічний доданки.
     return 0.5 * (x - 25) + 3 * pow(x + 25, 2) / 100;
+}
+
+// Друга аналітична похідна визначає опуклість функції.
+double derivative_2_math_funct(double x)
+{
+    return 0.5 + 6 * (x + 25) / 100;
+}
+
+// Перевіряємо сталий ненульовий знак першої похідної на всьому відрізку.
+// Для цієї функції похідна — парабола з мінімумом у x = -100/3.
+// Разом зі зміною знака f(x) це гарантує існування рівно одного кореня.
+int check_root_uniqueness(double a, double b)
+{
+    double da, db, minimum, maximum;
+    double vertex = -100.0 / 3.0;
+
+    if (!isfinite(a) || !isfinite(b) || a >= b)
+        return 0;
+
+    da = derivative_1_math_funct(a);
+    db = derivative_1_math_funct(b);
+
+    if (!isfinite(da) || !isfinite(db))
+        return 0;
+
+    minimum = fmin(da, db);
+    maximum = fmax(da, db);
+
+    if (a < vertex && vertex < b)
+        minimum = derivative_1_math_funct(vertex);
+
+    return minimum > 0 || maximum < 0;
 }
 
 // Метод половинного ділення для пошуку кореня рівняння.
@@ -133,6 +174,14 @@ void bisection_method(void)
         return;
     }
 
+    // Перевірка єдиності кореня за знаком похідної на всьому проміжку.
+    if (!check_root_uniqueness(a, b))
+    {
+        printf("\nRoot uniqueness is not confirmed by the derivative.\n");
+        printf("Choose a narrower interval.\n");
+        return;
+    }
+
     // Послідовне зменшення проміжку вдвічі.
     while (iterations < max_iterations)
     {
@@ -163,6 +212,142 @@ void bisection_method(void)
     }
 
     // Виведення знайденого або проміжного результату.
+    printf("\nRoot approximation = %.10lf", x);
+    printf("\nf(root) = %.10lf", fx);
+    printf("\nIterations = %d\n", iterations);
+
+    if (found == 1)
+        printf("Required accuracy achieved.\n");
+    else
+        printf("Maximum iterations reached. Accuracy not achieved.\n");
+}
+
+// Метод хорд з одним нерухомим кінцем проміжку.
+void chord_method(void)
+{
+    double a, b, epsilon, fa, fb, d2a, d2b;
+    double fixed, f_fixed, x, next_x, fx, denominator;
+    double min_derivative, vertex = -100.0 / 3.0;
+    int max_iterations, iterations = 0, found = 0;
+
+    do
+    {
+        printf("\nInput a: ");
+        if (scanf("%lf", &a) != 1)
+            return;
+        printf("Input b: ");
+        if (scanf("%lf", &b) != 1)
+            return;
+    } while (!isfinite(a) || !isfinite(b) || a >= b);
+
+    do
+    {
+        printf("Input epsilon (> 0): ");
+        if (scanf("%lf", &epsilon) != 1)
+            return;
+    } while (!isfinite(epsilon) || epsilon <= 0);
+
+    do
+    {
+        printf("Input maximum iterations: ");
+        if (scanf("%d", &max_iterations) != 1)
+            return;
+    } while (max_iterations <= 0);
+
+    fa = math_function(a);
+    fb = math_function(b);
+
+    if (!isfinite(fa) || !isfinite(fb))
+    {
+        printf("\nFunction values are not finite. Choose another interval.\n");
+        return;
+    }
+
+    if (fa == 0 || fb == 0)
+    {
+        x = (fa == 0) ? a : b;
+        printf("\nRoot = %.10lf", x);
+        printf("\nf(root) = %.10lf", math_function(x));
+        printf("\nIterations = 0\n");
+        return;
+    }
+
+    if ((fa > 0 && fb > 0) || (fa < 0 && fb < 0))
+    {
+        printf("\nFunction values have the same sign!\n");
+        printf("Choose another interval.\n");
+        return;
+    }
+
+    if (!check_root_uniqueness(a, b))
+    {
+        printf("\nRoot uniqueness is not confirmed by the derivative.\n");
+        printf("Choose a narrower interval.\n");
+        return;
+    }
+
+    // Друга похідна лінійна: однакові ненульові знаки на кінцях
+    // гарантують сталу опуклість на всьому проміжку.
+    d2a = derivative_2_math_funct(a);
+    d2b = derivative_2_math_funct(b);
+    if (!((d2a > 0 && d2b > 0) || (d2a < 0 && d2b < 0)))
+    {
+        printf("\nSecond derivative must keep a nonzero sign.\n");
+        printf("Choose a narrower interval.\n");
+        return;
+    }
+
+    // Нерухомий кінець обираємо за умовою f(x) * f''(x) > 0.
+    if ((fa > 0 && d2a > 0) || (fa < 0 && d2a < 0))
+    {
+        fixed = a;
+        f_fixed = fa;
+        x = b;
+        fx = fb;
+    }
+    else
+    {
+        fixed = b;
+        f_fixed = fb;
+        x = a;
+        fx = fa;
+    }
+
+    // Нижня межа |f'(x)| потрібна для оцінки похибки кореня.
+    min_derivative = fmin(fabs(derivative_1_math_funct(a)),
+                          fabs(derivative_1_math_funct(b)));
+    if (a < vertex && vertex < b)
+        min_derivative = fmin(min_derivative,
+                              fabs(derivative_1_math_funct(vertex)));
+
+    while (iterations < max_iterations)
+    {
+        denominator = f_fixed - fx;
+        if (denominator == 0 || !isfinite(denominator))
+        {
+            printf("\nCannot calculate the chord: invalid denominator.\n");
+            return;
+        }
+
+        next_x = x - fx * (fixed - x) / denominator;
+        if (!isfinite(next_x) || next_x < a || next_x > b)
+        {
+            printf("\nCannot calculate the chord on this interval.\n");
+            return;
+        }
+
+        x = next_x;
+        fx = math_function(x);
+        iterations++;
+
+        // За теоремою Лагранжа |x - root| <= |f(x)| / min|f'|.
+        if (fx == 0 || fabs(fx) / min_derivative <= epsilon)
+        {
+            found = 1;
+            break;
+        }
+    }
+
     printf("\nRoot approximation = %.10lf", x);
     printf("\nf(root) = %.10lf", fx);
     printf("\nIterations = %d\n", iterations);
