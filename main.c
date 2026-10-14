@@ -1,542 +1,319 @@
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
-#include <conio.h>
 #include <time.h>
 
-double math_function(double x);
-double derivative_1_math_funct(double x);
-double derivative_2_math_funct(double x);
-int check_root_uniqueness(double a, double b);
-void research_function(void);
-void bisection_method(void);
-void chord_method(void);
-
-// Головна функція забезпечує вибір методу розв'язання рівняння.
-int main()
+// Функція варіанта 10: шукаємо корені рівняння f(x) = 0.
+double f(double x)
 {
-    unsigned int var;
-
-    for (;;)
-    {
-        // Виведення головного меню програми.
-        printf("\n1 - Bisection method");
-        printf("\n2 - Chord method");
-        printf("\n3 - Function research and tables");
-        printf("\n0 - Exit");
-        printf("\nChoose option: ");
-
-        // Перевірка введеного пункту меню.
-        if (scanf("%u", &var) != 1)
-            return 0;
-
-        switch (var)
-        {
-            // Пошук кореня методом половинного ділення.
-            case 1:
-                bisection_method();
-                break;
-
-            // Пошук кореня методом хорд.
-            case 2:
-                chord_method();
-                break;
-
-            // Дослідження функції та пошук проміжків ізоляції.
-            case 3:
-                research_function();
-                break;
-
-            // Завершення роботи програми.
-            case 0:
-                return 0;
-
-            default:
-                printf("Incorrect option!\n");
-                break;
-        }
-    }
-
-    return 0;
-}
-
-// Основна математична функція для варіанта 10.
-double math_function(double x)
-{
-    // pow підносить вираз до степеня: 2 — квадрат, 3 — куб.
     return 0.25 * pow(x - 25, 2) + pow(x + 25, 3) / 100 + 1;
 }
 
-// Обчислення першої похідної аналітичним методом.
-double derivative_1_math_funct(double x)
+// Перша похідна потрібна для перевірки єдиності кореня.
+double d1(double x)
 {
-    // Диференціюємо квадратний і кубічний доданки.
     return 0.5 * (x - 25) + 3 * pow(x + 25, 2) / 100;
 }
 
-// Друга аналітична похідна визначає опуклість функції.
-double derivative_2_math_funct(double x)
+// Друга похідна допомагає обрати нерухому точку хорди.
+double d2(double x)
 {
     return 0.5 + 6 * (x + 25) / 100;
 }
 
-// Перевіряємо сталий ненульовий знак першої похідної на всьому відрізку.
-// Для цієї функції похідна — парабола з мінімумом у x = -100/3.
-// Разом зі зміною знака f(x) це гарантує існування рівно одного кореня.
-int check_root_uniqueness(double a, double b)
+// method = 1: половинне ділення; method = 2: метод хорд.
+void solve(int method)
 {
-    double da, db, minimum, maximum;
-    double vertex = -100.0 / 3.0;
+    // Межі ізоляції, точність, значення функції та похідної.
+    double a, b, eps, fa, fb, da, db, vertex = -100.0 / 3.0;
+    double lower, upper, t, x, fx, fixed = 0, fixed_f = 0;
+    double old, min_d = 0, seconds = 0;
+    double denominator, next_x, next_fx;
+    // clock_t зберігає відлік таймера; секунди отримуємо після перетворення.
+    clock_t start;
 
-    if (!isfinite(a) || !isfinite(b) || a >= b)
-        return 0;
+    // Ліміт, загальна кількість ітерацій та кількість у поточній групі.
+    int limit, debug, iterations = 0, batch = 0;
 
-    da = derivative_1_math_funct(a);
-    db = derivative_1_math_funct(b);
+    // Ознаки завершення і режиму обчислень.
+    int unlimited = 0, found = 0, stopped = 0, stalled = 0, action;
 
-    if (!isfinite(da) || !isfinite(db))
-        return 0;
-
-    minimum = fmin(da, db);
-    maximum = fmax(da, db);
-
-    if (a < vertex && vertex < b)
-        minimum = derivative_1_math_funct(vertex);
-
-    return minimum > 0 || maximum < 0;
-}
-
-// Метод половинного ділення для пошуку кореня рівняння.
-void bisection_method(void)
-{
-    // a, b — межі проміжку, epsilon — допустима похибка.
-    double a, b, epsilon;
-    double x, fx, fa, fb;
-
-    // Обмеження кількості ітерацій та їх фактична кількість.
-    int max_iterations, iterations = 0;
-    int found = 0;
-
-    // Введення та перевірка меж проміжку.
-    do
+    // Введення початкових умов і перевірка допустимості даних.
+    printf("Input a and b: ");
+    if (scanf("%lf%lf", &a, &b) != 2 || !isfinite(a) || !isfinite(b) || a >= b)
     {
-        printf("\nInput a: ");
-        if (scanf("%lf", &a) != 1)
-            return;
-
-        printf("Input b: ");
-        if (scanf("%lf", &b) != 1)
-            return;
-
-    } while (a >= b);
-
-    // Введення допустимої похибки.
-    do
-    {
-        printf("Input epsilon (> 0): ");
-        if (scanf("%lf", &epsilon) != 1)
-            return;
-
-    } while (epsilon <= 0);
-
-    // Введення максимальної кількості ітерацій.
-    do
-    {
-        printf("Input maximum iterations: ");
-        if (scanf("%d", &max_iterations) != 1)
-            return;
-
-    } while (max_iterations <= 0);
-
-    // Обчислення значень функції на межах проміжку.
-    fa = math_function(a);
-    fb = math_function(b);
-
-    // Перевірка випадку, коли корінь знаходиться на межі.
-    if (fa == 0 || fb == 0)
-    {
-        if (fa == 0)
-            x = a;
-        else
-            x = b;
-
-        printf("\nRoot = %.10lf", x);
-        printf("\nf(root) = %.10lf", math_function(x));
-        printf("\nIterations = 0\n");
+        printf("Incorrect interval.\n");
         return;
     }
 
-    // Перевірка різних знаків функції на кінцях проміжку.
-    if ((fa > 0 && fb > 0) || (fa < 0 && fb < 0))
+    printf("Input epsilon (> 0): ");
+    if (scanf("%lf", &eps) != 1 || !isfinite(eps) || eps <= 0)
     {
-        printf("\nFunction values have the same sign!\n");
-        printf("Choose another interval.\n");
+        printf("Incorrect epsilon.\n");
         return;
     }
 
-    // Перевірка єдиності кореня за знаком похідної на всьому проміжку.
-    if (!check_root_uniqueness(a, b))
+    printf("Maximum iterations: ");
+    if (scanf("%d", &limit) != 1 || limit <= 0)
     {
-        printf("\nRoot uniqueness is not confirmed by the derivative.\n");
-        printf("Choose a narrower interval.\n");
+        printf("Incorrect number of iterations.\n");
         return;
     }
 
-    // Послідовне зменшення проміжку вдвічі.
-    while (iterations < max_iterations)
+    // Режим налагодження: 1 — друкувати кожну ітерацію, 0 — не друкувати.
+    printf("Show each iteration? (1 - Yes, 0 - No): ");
+    if (scanf("%d", &debug) != 1 || (debug != 0 && debug != 1))
     {
-        // Знаходимо середину поточного проміжку.
-        x = a + (b - a) / 2.0;
-        fx = math_function(x);
-
-        iterations++;
-
-        // Перевіряємо досягнення заданої точності.
-        if (fx == 0 || (b - a) / 2.0 <= epsilon)
-        {
-            found = 1;
-            break;
-        }
-
-        // Залишаємо половину, в якій функція змінює знак.
-        if ((fa < 0 && fx > 0) || (fa > 0 && fx < 0))
-        {
-            b = x;
-            fb = fx;
-        }
-        else
-        {
-            a = x;
-            fa = fx;
-        }
+        printf("Incorrect debug mode.\n");
+        return;
     }
 
-    // Виведення знайденого або проміжного результату.
-    printf("\nRoot approximation = %.10lf", x);
-    printf("\nf(root) = %.10lf", fx);
-    printf("\nIterations = %d\n", iterations);
+    start = clock();
+    fa = f(a);
+    fb = f(b);
 
-    if (found == 1)
-        printf("Required accuracy achieved.\n");
-    else
-        printf("Maximum iterations reached. Accuracy not achieved.\n");
-}
-
-// Метод хорд з одним нерухомим кінцем проміжку.
-void chord_method(void)
-{
-    double a, b, epsilon, fa, fb, d2a, d2b;
-    double fixed, f_fixed, x, next_x, fx, denominator;
-    double min_derivative, vertex = -100.0 / 3.0;
-    int max_iterations, iterations = 0, found = 0;
-
-    do
-    {
-        printf("\nInput a: ");
-        if (scanf("%lf", &a) != 1)
-            return;
-        printf("Input b: ");
-        if (scanf("%lf", &b) != 1)
-            return;
-    } while (!isfinite(a) || !isfinite(b) || a >= b);
-
-    do
-    {
-        printf("Input epsilon (> 0): ");
-        if (scanf("%lf", &epsilon) != 1)
-            return;
-    } while (!isfinite(epsilon) || epsilon <= 0);
-
-    do
-    {
-        printf("Input maximum iterations: ");
-        if (scanf("%d", &max_iterations) != 1)
-            return;
-    } while (max_iterations <= 0);
-
-    fa = math_function(a);
-    fb = math_function(b);
-
+    // Скінченні аргументи також можуть спричинити переповнення f(x).
     if (!isfinite(fa) || !isfinite(fb))
     {
-        printf("\nFunction values are not finite. Choose another interval.\n");
+        printf("Function values are not finite. Choose another interval.\n");
         return;
     }
 
+    // Точний корінь на межі повертаємо до перевірки похідної:
+    // його значення вже відоме, навіть якщо єдиність не підтверджено.
     if (fa == 0 || fb == 0)
     {
-        x = (fa == 0) ? a : b;
-        printf("\nRoot = %.10lf", x);
-        printf("\nf(root) = %.10lf", math_function(x));
-        printf("\nIterations = 0\n");
+        if (fa == 0) x = a;
+        else x = b;
+
+        printf("Root = %.10lf\n", x);
+        printf("f(root) = 0\nIterations = 0\n");
+        printf("CPU time = %.9lf seconds\n",
+               (double)(clock() - start) / CLOCKS_PER_SEC);
+        printf("Required accuracy achieved.\n");
         return;
     }
 
+    // Для неперервної функції різні знаки на кінцях гарантують корінь.
     if ((fa > 0 && fb > 0) || (fa < 0 && fb < 0))
     {
-        printf("\nFunction values have the same sign!\n");
-        printf("Choose another interval.\n");
+        printf("No sign change on the interval.\n");
         return;
     }
 
-    if (!check_root_uniqueness(a, b))
-    {
-        printf("\nRoot uniqueness is not confirmed by the derivative.\n");
-        printf("Choose a narrower interval.\n");
-        return;
-    }
+    // Перевіряємо сталий знак першої похідної на всьому проміжку.
+    // Для варіанта 10 d1(x) — парабола з вершиною у точці -100/3.
+    da = d1(a);
+    db = d1(b);
+    lower = da;
+    upper = da;
+    if (db < lower) lower = db;
+    if (db > upper) upper = db;
 
-    // Друга похідна лінійна: однакові ненульові знаки на кінцях
-    // гарантують сталу опуклість на всьому проміжку.
-    d2a = derivative_2_math_funct(a);
-    d2b = derivative_2_math_funct(b);
-    if (!((d2a > 0 && d2b > 0) || (d2a < 0 && d2b < 0)))
-    {
-        printf("\nSecond derivative must keep a nonzero sign.\n");
-        printf("Choose a narrower interval.\n");
-        return;
-    }
-
-    // Нерухомий кінець обираємо за умовою f(x) * f''(x) > 0.
-    if ((fa > 0 && d2a > 0) || (fa < 0 && d2a < 0))
-    {
-        fixed = a;
-        f_fixed = fa;
-        x = b;
-        fx = fb;
-    }
-    else
-    {
-        fixed = b;
-        f_fixed = fb;
-        x = a;
-        fx = fa;
-    }
-
-    // Нижня межа |f'(x)| потрібна для оцінки похибки кореня.
-    min_derivative = fmin(fabs(derivative_1_math_funct(a)),
-                          fabs(derivative_1_math_funct(b)));
     if (a < vertex && vertex < b)
-        min_derivative = fmin(min_derivative,
-                              fabs(derivative_1_math_funct(vertex)));
-
-    while (iterations < max_iterations)
     {
-        denominator = f_fixed - fx;
-        if (denominator == 0 || !isfinite(denominator))
+        t = d1(vertex);
+        if (t < lower) lower = t;
+        if (t > upper) upper = t;
+    }
+
+    printf("\nf(a) = %.6lf, f(b) = %.6lf\n", fa, fb);
+    printf("Range of f'(x): [%.6lf; %.6lf]\n", lower, upper);
+
+    // Сталий ненульовий знак похідної дає строгу монотонність;
+    // разом зі зміною знака f(x) це гарантує рівно один корінь.
+    if (!(lower > 0 || upper < 0))
+    {
+        printf("Uniqueness of the root is not confirmed.\n");
+        return;
+    }
+    printf("Exactly one root on the interval.\n");
+
+    x = a;
+    fx = fa;
+
+    if (method == 2)
+    {
+        // Метод хорд потребує сталого ненульового знака другої похідної.
+        if (!((d2(a) > 0 && d2(b) > 0) ||
+              (d2(a) < 0 && d2(b) < 0)))
         {
-            printf("\nCannot calculate the chord: invalid denominator.\n");
+            printf("Choose an interval with constant sign of f''(x).\n");
             return;
         }
 
-        next_x = x - fx * (fixed - x) / denominator;
-        if (!isfinite(next_x) || next_x < a || next_x > b)
+        // Кінець, де f(x) і f''(x) мають однакові знаки, є нерухомим.
+        if ((fa > 0 && d2(a) > 0) || (fa < 0 && d2(a) < 0))
         {
-            printf("\nCannot calculate the chord on this interval.\n");
-            return;
+            fixed = a;
+            fixed_f = fa;
+            x = b;
+            fx = fb;
+        }
+        else
+        {
+            fixed = b;
+            fixed_f = fb;
         }
 
-        x = next_x;
-        fx = math_function(x);
-        iterations++;
+        // Мінімальний модуль похідної потрібен для оцінки похибки.
+        min_d = fabs(da);
+        if (fabs(db) < min_d) min_d = fabs(db);
+        if (a < vertex && vertex < b && fabs(d1(vertex)) < min_d)
+            min_d = fabs(d1(vertex));
 
-        // За теоремою Лагранжа |x - root| <= |f(x)| / min|f'|.
-        if (fx == 0 || fabs(fx) / min_derivative <= epsilon)
+        // Ділення на min_d допустиме лише для додатної скінченної оцінки.
+        if (!isfinite(min_d) || min_d <= 0)
         {
-            found = 1;
-            break;
+            printf("Cannot estimate root accuracy.\n");
+            return;
         }
     }
 
-    printf("\nRoot approximation = %.10lf", x);
-    printf("\nf(root) = %.10lf", fx);
-    printf("\nIterations = %d\n", iterations);
+    // Накопичуємо час ділянок обчислення; очікування вибору не враховуємо.
+    start = clock();
 
-    if (found == 1)
+    while (!found && !stopped && !stalled)
+    {
+        // Після вичерпання ліміту надаємо три дії за умовою завдання.
+        if (!unlimited && batch >= limit)
+        {
+            seconds += (double)(clock() - start) / CLOCKS_PER_SEC;
+            printf("\nIteration limit reached (%d total).\n", iterations);
+
+            do
+            {
+                printf("1 - Continue %d iterations\n", limit);
+                printf("2 - Continue without limit\n");
+                printf("3 - Stop and show result\n");
+                printf("Choose: ");
+
+                if (scanf("%d", &action) != 1)
+                {
+                    action = 3;
+                    break;
+                }
+            } while (action < 1 || action > 3);
+
+            start = clock();
+
+            if (action == 3)
+            {
+                stopped = 1;
+                break;
+            }
+
+            // Продовження на нову групу або без обмеження кількості.
+            if (action == 1) batch = 0;
+            else unlimited = 1;
+        }
+
+        if (method == 1)
+        {
+            // Половинне ділення: беремо середину поточного проміжку.
+            x = a + (b - a) / 2;
+            fx = f(x);
+        }
+        else
+        {
+            // Метод хорд: перетин хорди з віссю X дає нове наближення.
+            denominator = fixed_f - fx;
+            if (denominator == 0 || !isfinite(denominator))
+            {
+                stalled = 1;
+                break;
+            }
+
+            // Перевіряємо нову точку до заміни останнього коректного наближення.
+            next_x = x - fx * (fixed - x) / denominator;
+            if (!isfinite(next_x) || next_x < a || next_x > b)
+            {
+                stalled = 1;
+                break;
+            }
+            next_fx = f(next_x);
+            if (!isfinite(next_fx))
+            {
+                stalled = 1;
+                break;
+            }
+
+            old = x;
+            x = next_x;
+            fx = next_fx;
+        }
+
+        iterations++;
+        batch++;
+
+        if (debug == 1)
+            printf("%d: x = %.10lf, f(x) = %.10lf\n", iterations, x, fx);
+
+        if (method == 1)
+        {
+            // Похибка середньої точки не більша за половину довжини.
+            if (fx == 0 || (b - a) / 2 <= eps)
+                found = 1;
+            else if (x == a || x == b)
+                stalled = 1;
+            else if ((fa < 0 && fx > 0) || (fa > 0 && fx < 0))
+            {
+                b = x;
+                fb = fx;
+            }
+            else
+            {
+                a = x;
+                fa = fx;
+            }
+        }
+        else
+        {
+            // За теоремою Лагранжа |x - root| <= |f(x)| / min_d.
+            // Мала зміна x сама по собі ще не гарантує потрібної точності.
+            if (fx == 0 || fabs(fx) / min_d <= eps)
+                found = 1;
+            else if (x == old)
+                stalled = 1;
+        }
+    }
+
+    seconds += (double)(clock() - start) / CLOCKS_PER_SEC;
+
+    // Спільний результат для обох методів.
+    printf("\nRoot approximation = %.10lf\n", x);
+    printf("f(root) = %.10lf\n", fx);
+    printf("Iterations = %d\nCPU time = %.9lf seconds\n",
+           iterations, seconds);
+
+    if (found)
         printf("Required accuracy achieved.\n");
+    else if (stalled)
+        printf("Stopped: no numerical progress.\n");
     else
-        printf("Maximum iterations reached. Accuracy not achieved.\n");
+        printf("Stopped by user before required accuracy.\n");
 }
 
-// Дослідження функції та побудова таблиць.
-void research_function(void)
+// Головне меню викликає спільну функцію з потрібним методом.
+int main(void)
 {
-    // mode — спосіб введення, N — кількість точок, i — індекс, found — лічильник знахідок.
-    unsigned int mode, N, i, found = 0;
+    int choice;
 
-    // isolated показує, чи підтверджено єдиність кореня на поточному інтервалі.
-    int isolated;
-
-    // X1, X2 — межі; delta — крок; x, fx — поточні дані; prev_x, prev_f — попередні.
-    double X1, X2, delta, x, fx, prev_x, prev_f;
-
-    // d1, d2 — перша похідна на кінцях інтервалу; vertex — аргумент її мінімуму.
-    double d1, d2;
-    double vertex = -100.0 / 3.0;
-
-    // Вибір способу введення.
-    do
+    for (;;)
     {
-        printf("\n1 - Input X1, X2, N");
-        printf("\n2 - Input X1, X2, delta");
-        printf("\nChoose input method: ");
+        printf("\n1 - Bisection method\n");
+        printf("2 - Chord method\n");
+        printf("0 - Exit\nChoose: ");
 
-        if (scanf("%u", &mode) != 1)
-            return;
+        if (scanf("%d", &choice) != 1)
+            return 0;
 
-    } while (mode != 1 && mode != 2);
+        if (choice == 0)
+            return 0;
 
-    // Введення та перевірка меж.
-    do
-    {
-        printf("Input X1: ");
-        if (scanf("%lf", &X1) != 1)
-            return;
-
-        printf("Input X2: ");
-        if (scanf("%lf", &X2) != 1)
-            return;
-
-    } while (X1 >= X2);
-
-    if (mode == 1)
-    {
-        // Введення кількості точок.
-        do
-        {
-            printf("Input N (2...1000): ");
-            if (scanf("%u", &N) != 1)
-                return;
-
-        } while (N < 2 || N > 1000);
-
-        // N точок утворюють N-1 проміжків.
-        delta = (X2 - X1) / (N - 1);
+        if (choice == 1 || choice == 2)
+            solve(choice);
+        else
+            printf("Incorrect option.\n");
     }
-    else
-    {
-        // Введення кроку аргументу.
-        do
-        {
-            printf("Input delta: ");
-            if (scanf("%lf", &delta) != 1)
-                return;
-
-        } while (delta <= 0 ||
-                 delta > X2 - X1 ||
-                 (X2 - X1) / delta > 998);
-
-        // Визначаємо кількість точок за кроком.
-        N = (unsigned int)((X2 - X1) / delta) + 1;
-
-        // Додаємо точку X2, якщо вона не потрапила до сітки.
-        if (X1 + (N - 1) * delta < X2)
-            N++;
-    }
-
-    // Виведення початкових даних.
-    printf("\nX1 = %.6lf", X1);
-    printf("\nX2 = %.6lf", X2);
-    printf("\nN = %u", N);
-    printf("\ndelta = %.6lf\n", delta);
-
-    // Таблиця значень функції.
-    printf("\nTable of function:\n");
-    printf("-------------------------------------\n");
-    printf(" N       x              f(x)\n");
-    printf("-------------------------------------\n");
-
-    // Перебираємо всі точки сітки.
-    for (i = 0; i < N; i++)
-    {
-        x = X1 + i * delta;
-
-        if (i == N - 1)
-            x = X2;
-
-        printf("%3u   %12.6lf   %12.6lf\n",
-               i + 1, x, math_function(x));
-    }
-
-    // Таблиця значень першої похідної.
-    printf("\nTable of derivative:\n");
-    printf("-------------------------------------\n");
-    printf(" N       x              f'(x)\n");
-    printf("-------------------------------------\n");
-
-    for (i = 0; i < N; i++)
-    {
-        x = X1 + i * delta;
-
-        if (i == N - 1)
-            x = X2;
-
-        printf("%3u   %12.6lf   %12.6lf\n",
-               i + 1, x, derivative_1_math_funct(x));
-    }
-
-    // Пошук проміжків зміни знака функції.
-    printf("\nRoot isolation intervals:\n");
-
-    prev_x = X1;
-    prev_f = math_function(prev_x);
-
-    // Порівнюємо значення у сусідніх точках.
-    for (i = 1; i < N; i++)
-    {
-        x = X1 + i * delta;
-
-        if (i == N - 1)
-            x = X2;
-
-        fx = math_function(x);
-
-        if (prev_f == 0)
-        {
-            printf("Root at x = %.6lf\n", prev_x);
-            found++;
-        }
-
-        // Зміна знака вказує на корінь між точками.
-        if ((prev_f < 0 && fx > 0) ||
-            (prev_f > 0 && fx < 0))
-        {
-            // Перевірка сталості знака похідної.
-            d1 = derivative_1_math_funct(prev_x);
-            d2 = derivative_1_math_funct(x);
-
-            isolated = 0;
-
-            if (d1 < 0 && d2 < 0)
-                isolated = 1;
-
-            // Для додатної похідної враховуємо її мінімум.
-            if (d1 > 0 && d2 > 0 &&
-                (vertex <= prev_x || vertex >= x ||
-                 derivative_1_math_funct(vertex) > 0))
-                isolated = 1;
-
-            if (isolated == 1)
-                printf("One root in [%.6lf; %.6lf]\n",
-                       prev_x, x);
-            else
-                printf("Check interval [%.6lf; %.6lf]\n",
-                       prev_x, x);
-
-            found++;
-        }
-
-        // Поточна точка стає попередньою.
-        prev_x = x;
-        prev_f = fx;
-    }
-
-    if (prev_f == 0)
-    {
-        printf("Root at x = %.6lf\n", prev_x);
-        found++;
-    }
-
-    if (found == 0)
-        printf("No root intervals detected.\n");
 }
